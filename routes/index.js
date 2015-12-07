@@ -54,27 +54,28 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
   router.put('/:pageId', (req, res, next) => {
     const Page = db.models.Page
 
-    Page
-      .findOne({
-        where: {
-          id: req.params.pageId
-        }
-      })
-      .then(page => {
-        Object.keys(req.params.body, key => {
-          if (key === 'id') return
-          page[key] = req.params.body
+    console.log(db)
+
+    db.transaction(t => {
+      return Page
+        .update(req.body, {
+          where: {
+            id: req.params.pageId
+          }
+        }, {transaction: t})
+        .then(result => {
+          return Page
+            .findOne({
+              where: {
+                id: req.params.pageId
+              }
+            }, {transaction: t})
         })
-        return page
-          .save()
-          .then(() => {
-            return page
-          })
-      })
-      .then(page => {
-        res.json(page.toJSON())
-      })
-      .catch(next)
+    })
+    .then(page => {
+      res.json(page.toJSON())
+    })
+    .catch(next)
   })
 
   // Delete page by id
