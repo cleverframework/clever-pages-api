@@ -23,7 +23,7 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
   })
 
   // Get page by id
-  router.get('/{pageId}', (req, res, next) => {
+  router.get('/:pageId', (req, res, next) => {
     const Page = db.models.Page
 
     Page
@@ -43,17 +43,15 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
     const Page = db.models.Page
 
     Page
-      .findAll()
-      .then(pages => {
-        res.json(pages.map(page => {
-          return page.toJSON()
-        }))
+      .create(req.body)
+      .then(page => {
+        res.json(page.toJSON())
       })
       .catch(next)
   })
 
   // Edit page by id
-  router.put('/{pageId}', (req, res, next) => {
+  router.put('/:pageId', (req, res, next) => {
     const Page = db.models.Page
 
     Page
@@ -72,6 +70,31 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
           .then(() => {
             return page
           })
+      })
+      .then(page => {
+        res.json(page.toJSON())
+      })
+      .catch(next)
+  })
+
+  // Delete page by id
+  router.delete('/:pageId', (req, res, next) => {
+    const Page = db.models.Page
+
+    Page
+      .findOne({
+        where: {
+          id: req.params.pageId
+        }
+      })
+      .then(page => {
+        return Page
+          .destroy({
+            where: {
+              id: req.params.pageId
+            }
+          })
+          .then(() => page)
       })
       .then(page => {
         res.json(page.toJSON())

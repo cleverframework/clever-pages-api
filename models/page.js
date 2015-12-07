@@ -3,7 +3,8 @@
 module.exports = function (sequelize, DataTypes) {
   const Page = sequelize.define('Page', {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    version: { type: DataTypes.FLOAT, primaryKey: true },
+    version: { type: DataTypes.FLOAT, primaryKey: true, defaultValue: 0.1 },
+    published: { type: DataTypes.BOOLEAN, defaultValue: false },
     name: { type: DataTypes.JSON },
     description: { type: DataTypes.JSON, allowNull: true }
   }, {
