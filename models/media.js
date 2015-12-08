@@ -27,19 +27,32 @@ module.exports = function (sequelize, DataTypes) {
     },
     instanceMethods: {
       setName (text, lang) {
-        this.name[lang] = text
+        const name = JSON.parse(this.name || '{}')
+        name[lang] = text
+        this.name = JSON.stringify(name)
       },
       getName (lang) {
-        return this.caption[lang]
+        const name = JSON.parse(this.name || '{}')
+        return name[lang]
       },
       setContent (text, lang) {
-        this.content[lang] = text
+        const content = JSON.parse(this.content || '{}')
+        content[lang] = text
+        this.content = JSON.stringify(content)
       },
       getContent (lang) {
-        return this.content[lang]
+        const content = JSON.parse(this.content || '{}')
+        return content[lang]
       },
-      toJSON () {
-        return this.get({ plain: true })
+      toJSON (lang) {
+        const obj = this.get({ plain: true })
+
+        if (this.type === 'text') {
+          obj.name = this.getName(lang)
+          obj.content = this.getContent(lang)
+        }
+
+        return obj
       }
     }
   })
