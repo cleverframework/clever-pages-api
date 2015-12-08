@@ -108,7 +108,7 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
         })
     })
     .then(page => {
-      res.json(page.toJSON())
+      res.json(page.toJSON(lang))
     })
     .catch(next)
   })
