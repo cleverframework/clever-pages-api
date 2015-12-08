@@ -25,12 +25,16 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
   // Get page by id
   router.get('/:pageId', (req, res, next) => {
     const Page = db.models.Page
+    const Media = db.models.Media
 
     Page
       .findOne({
         where: {
           id: req.params.pageId
-        }
+        },
+        include: [
+          { model: Media, as: 'medias' }
+        ]
       })
       .then(page => {
         res.json(page.toJSON())
