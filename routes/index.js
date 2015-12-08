@@ -69,6 +69,8 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
     const Page = db.models.Page
 
     const lang = req.query.lang || 'en'
+    console.log(lang)
+
 
     db.transaction(t => {
       return Page
