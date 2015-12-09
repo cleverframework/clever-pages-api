@@ -12,6 +12,7 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
   router.post('/:pageId/medias', (req, res, next) => {
     const Page = db.models.Page
     const Media = db.models.Media
+    const File = db.models.File
 
     const lang = req.query.lang || 'en'
 
@@ -39,50 +40,50 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
   })
 
   // Edit page by id
-  router.put('/:pageId', (req, res, next) => {
-    const Page = db.models.Page
+  router.put('/:pageId/medias/:mediaId', (req, res, next) => {
+    const Media = db.models.Media
 
     const lang = req.query.lang || 'en'
 
     db.transaction(t => {
-      return Page
+      return Media
         .findOne({
           where: {
-            id: req.params.pageId
+            id: req.params.mediaId
           }
         }, {transaction: t})
-        .then(page => {
+        .then(media => {
           const params = Object.assign({}, req.body)
           if (params.name) {
-            page.setName(params.name, lang)
-            params.name = page.name
+            media.setName(params.name, lang)
+            params.name = media.name
           }
-          if (params.description) {
-            page.setDescription(params.description, lang)
-            params.description = page.description
+          if (params.content) {
+            media.setContent(params.content, lang)
+            params.content = media.content
           }
           return params
         })
         .then(params => {
-          return Page
+          return Media
             .update(params, {
               where: {
-                id: req.params.pageId
+                id: req.params.mediaId
               }
             }, {transaction: t})
 
         })
         .then(result => {
-          return Page
+          return Media
             .findOne({
               where: {
-                id: req.params.pageId
+                id: req.params.mediaId
               }
             }, {transaction: t})
         })
     })
-    .then(page => {
-      res.json(page.toJSON(lang))
+    .then(media => {
+      res.json(media.toJSON(lang))
     })
     .catch(next)
   })

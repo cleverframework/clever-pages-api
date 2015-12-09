@@ -6,7 +6,7 @@
 module.exports = function (sequelize, DataTypes) {
   const Media = sequelize.define('Media', {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    reference: { type: DataTypes.FLOAT, allowNull: true },
+    reference: { type: DataTypes.STRING, defaultValue: '' },
     type: { type: DataTypes.ENUM('text', 'image', 'gallery', 'button') },
 
     // text
@@ -14,7 +14,7 @@ module.exports = function (sequelize, DataTypes) {
     content: { type: DataTypes.JSON, defaultValue: '{"en":""}' },
 
     // button
-    url: { type: DataTypes.STRING, allowNull: true }
+    link: { type: DataTypes.STRING, allowNull: true }
 
   }, {
     paranoid: true,
@@ -22,9 +22,9 @@ module.exports = function (sequelize, DataTypes) {
     tableName: 'media',
     classMethods: {
       associate (models) {
-        Media.hasOne(models.File, {as: 'imageFile', foreignKey: 'media_id'})
+        Media.belongsTo(models.File, {as: 'imageFile', constraints: false})
         Media.hasMany(models.File, {as: 'imageFiles', foreignKey: 'media_id'})
-        Media.hasOne(models.File, {as: 'buttonFile', foreignKey: 'media_id'})
+        Media.belongsTo(models.File, {as: 'buttonFile', constraints: false})
       }
     },
     instanceMethods: {
@@ -54,6 +54,8 @@ module.exports = function (sequelize, DataTypes) {
             obj.name = this.getName(lang)
             obj.content = this.getContent(lang)
             break
+          case 'gallery':
+            if (!obj.imageFiles) obj.imageFiles = []
           case 'button':
             obj.name = this.getName(lang)
             break
