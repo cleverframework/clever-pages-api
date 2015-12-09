@@ -6,15 +6,15 @@
 module.exports = function (sequelize, DataTypes) {
   const Media = sequelize.define('Media', {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    reference: { type: DataTypes.FLOAT, unique: true, allowNull: false },
-    type: { type: DataTypes.ENUM('text', 'image', 'gallery', 'button'), allowNull: false },
+    reference: { type: DataTypes.FLOAT, allowNull: true },
+    type: { type: DataTypes.ENUM('text', 'image', 'gallery', 'button') },
 
     // text
-    name: { type: DataTypes.JSON, allowNull: true },
-    content: { type: DataTypes.JSON, allowNull: true },
+    name: { type: DataTypes.JSON, defaultValue: '{"en":""}' },
+    content: { type: DataTypes.JSON, defaultValue: '{"en":""}' },
 
     // button
-    url: { type: DataTypes.STRING }
+    url: { type: DataTypes.STRING, allowNull: true }
 
   }, {
     paranoid: true,
@@ -22,7 +22,9 @@ module.exports = function (sequelize, DataTypes) {
     tableName: 'media',
     classMethods: {
       associate (models) {
-        Media.hasMany(models.File, {foreignKey: 'media_id'})
+        Media.hasOne(models.File, {as: 'imageFile', foreignKey: 'media_id'})
+        Media.hasMany(models.File, {as: 'imageFiles', foreignKey: 'media_id'})
+        Media.hasOne(models.File, {as: 'buttonFile', foreignKey: 'media_id'})
       }
     },
     instanceMethods: {
@@ -47,9 +49,14 @@ module.exports = function (sequelize, DataTypes) {
       toJSON (lang) {
         const obj = this.get({ plain: true })
 
-        if (this.type === 'text') {
-          obj.name = this.getName(lang)
-          obj.content = this.getContent(lang)
+        switch (this.type) {
+          case 'text':
+            obj.name = this.getName(lang)
+            obj.content = this.getContent(lang)
+            break
+          case 'button':
+            obj.name = this.getName(lang)
+            break
         }
 
         return obj

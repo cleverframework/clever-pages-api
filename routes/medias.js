@@ -8,37 +8,16 @@ const jwt = require('jsonwebtoken')
 // Exports
 module.exports = function (UsersApiPackage, app, config, db, auth) {
 
-  // Get pages
-  router.get('/', (req, res, next) => {
-    const lang = req.query.lang || 'en'
-
-    const Page = db.models.Page
-
-    Page
-      .findAll()
-      .then(pages => {
-        res.json(pages.map(page => {
-          return page.toJSON(lang)
-        }))
-      })
-      .catch(next)
-  })
-
-  // Get page by id
-  router.get('/:pageId', (req, res, next) => {
+  // Create new media
+  router.post('/:pageId/medias', (req, res, next) => {
     const Page = db.models.Page
     const Media = db.models.Media
 
     const lang = req.query.lang || 'en'
 
-    Page
-      .findOne({
-        where: {
-          id: req.params.pageId
-        },
-        include: [
-          { model: Media, as: 'medias' }
-        ]
+    Page.
+      findOne({
+        where: { id: req.params.pageId }
       })
       .then(page => {
         if (!page) {
@@ -46,25 +25,15 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
           notFound.code = 'NOT_FOUND'
           throw notFound
         }
-        res.json(page.toJSON(lang))
+        return Media
+          .create(req.body)
+          .then((media) => {
+            page.addMedia(media)
+            return page.save().then(() => media)
+          })
       })
-      .catch(next)
-  })
-
-  // Create new page
-  router.post('/', (req, res, next) => {
-    const Page = db.models.Page
-
-    const lang = req.query.lang || 'en'
-
-    const params = Object.assign({}, req.body, {
-      name: JSON.stringify({en: req.body.name})
-    })
-
-    Page
-      .create(params)
-      .then(page => {
-        res.json(page.toJSON(lang))
+      .then(media => {
+        res.json(media.toJSON(lang))
       })
       .catch(next)
   })
@@ -83,11 +52,6 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
           }
         }, {transaction: t})
         .then(page => {
-          if (!page) {
-            const notFound = new Error('Page not found')
-            notFound.code = 'NOT_FOUND'
-            throw notFound
-          }
           const params = Object.assign({}, req.body)
           if (params.name) {
             page.setName(params.name, lang)
@@ -134,11 +98,6 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
         }
       })
       .then(page => {
-        if (!page) {
-          const notFound = new Error('Page not found')
-          notFound.code = 'NOT_FOUND'
-          throw notFound
-        }
         return Page
           .destroy({
             where: {
