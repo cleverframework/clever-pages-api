@@ -29,8 +29,9 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
         return Media
           .create(req.body)
           .then((media) => {
-            page.addMedia(media)
-            return page.save().then(() => media)
+            return page
+              .addMedia(media)
+              .then(() => media)
           })
       })
       .then(media => {

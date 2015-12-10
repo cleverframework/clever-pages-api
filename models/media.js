@@ -23,7 +23,7 @@ module.exports = function (sequelize, DataTypes) {
     classMethods: {
       associate (models) {
         Media.belongsTo(models.File, {as: 'imageFile', constraints: false})
-        Media.hasMany(models.File, {as: 'imageFiles', foreignKey: 'media_id'})
+        Media.hasMany(models.File, {as: 'imageFiles', foreignKey: 'media_id' })
         Media.belongsTo(models.File, {as: 'buttonFile', constraints: false})
       }
     },
