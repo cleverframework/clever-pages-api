@@ -4,7 +4,7 @@ module.exports = function (sequelize, DataTypes) {
   const File = sequelize.define('File', {
     id: { type: DataTypes.STRING, primaryKey: true },
     caption: { type: DataTypes.JSON, defaultValue: '{"en":""}'},
-    mime: { type: DataTypes.STRING },
+    mimetype: { type: DataTypes.STRING, defaultValue: 'application/octet-stream'},
     filename: { type: DataTypes.STRING }
   }, {
     paranoid: true,
