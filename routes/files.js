@@ -66,6 +66,7 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
                       break
                     case 'button':
                       q = `UPDATE media SET button_file_id = ${file.id}, updated_at = '${now}' WHERE id = ${media.id}`
+                      break
                     default:
                       q = `UPDATE file SET media_id = ${media.id}, updated_at = '${now}' WHERE id = ${file.id}`
                   }
@@ -74,15 +75,26 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
                     db
                       .query(q, {transaction: t})
                       .spread((results, metadata) => {
-                        yep(file)
+                        // TODO: What if nope?
+                        yep(results)
                       })
                   })
-
                 })
             })
           })
-          .then(file => {
-            res.json(file.toJSON(lang))
+          .then((results) => {
+            return Media
+              .findOne({
+                where: { id: req.params.mediaId },
+                include: [
+                  { model: File, as: 'imageFile' },
+                  { model: File, as: 'imageFiles' },
+                  { model: File, as: 'buttonFile' }
+                ]
+              })
+          })
+          .then(media => {
+            res.json(media.toJSON(lang))
           })
           .catch(next)
       })

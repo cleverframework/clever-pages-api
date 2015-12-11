@@ -28,6 +28,7 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
   router.get('/:pageId', (req, res, next) => {
     const Page = db.models.Page
     const Media = db.models.Media
+    const File = db.models.File
 
     const lang = req.query.lang || 'en'
 
@@ -37,7 +38,21 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
           id: req.params.pageId
         },
         include: [
-          { model: Media, as: 'medias' }
+          {
+            model: Media,
+            as: 'medias',
+            include: [
+              { model: File, as: 'imageFile' },
+              { model: File, as: 'imageFiles' },
+              { model: File, as: 'buttonFile' }
+            ],
+            order: [
+              [ { model: File, as: 'imageFiles' }, 'order', 'ASC' ]
+            ]
+          }
+        ],
+        order: [
+          [ { model: Media, as: 'medias' }, 'id', 'ASC' ],
         ]
       })
       .then(page => {

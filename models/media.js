@@ -23,10 +23,10 @@ module.exports = function (sequelize, DataTypes) {
     classMethods: {
       associate (models) {
         Media.belongsTo(models.File, {as: 'imageFile', constraints: false})
-        // Media.hasMany(models.File, {
-        //   as: 'imageFiles',
-        //   foreignKey: 'media_id'
-        // })
+        Media.hasMany(models.File, {
+          as: 'imageFiles',
+          foreignKey: 'media_id'
+        })
         Media.belongsTo(models.File, {as: 'buttonFile', constraints: false})
       }
     },
@@ -56,11 +56,20 @@ module.exports = function (sequelize, DataTypes) {
           case 'text':
             obj.name = this.getName(lang)
             obj.content = this.getContent(lang)
+            if (this.imageFile) obj.imageFile = this.imageFile.toJSON(lang)
             break
           case 'gallery':
+            obj.name = this.getName(lang)
             if (!obj.imageFiles) obj.imageFiles = []
+            if (this.imageFiles) {
+              obj.imageFiles = this.imageFiles.map(imageFile => {
+                return imageFile.toJSON(lang)
+              })
+            }
+            break
           case 'button':
             obj.name = this.getName(lang)
+            if (this.buttonFile) obj.buttonFile = this.buttonFile.toJSON(lang)
             break
         }
 

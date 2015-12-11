@@ -43,73 +43,82 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
   // Edit page by id
   router.put('/:pageId/medias/:mediaId', (req, res, next) => {
     const Media = db.models.Media
+    const File = db.models.File
 
     const lang = req.query.lang || 'en'
 
-    db.transaction(t => {
-      return Media
-        .findOne({
-          where: {
-            id: req.params.mediaId
-          }
-        }, {transaction: t})
-        .then(media => {
-          const params = Object.assign({}, req.body)
-          if (params.name) {
-            media.setName(params.name, lang)
-            params.name = media.name
-          }
-          if (params.content) {
-            media.setContent(params.content, lang)
-            params.content = media.content
-          }
-          return params
-        })
-        .then(params => {
-          return Media
-            .update(params, {
-              where: {
-                id: req.params.mediaId
-              }
-            }, {transaction: t})
+    return Media
+      .findOne({
+        where: {
+          id: req.params.mediaId
+        },
+        include: [
+          { model: File, as: 'imageFile' },
+          { model: File, as: 'imageFiles' },
+          { model: File, as: 'buttonFile' }
+        ]
+      })
+      .then(media => {
+        if (!media) {
+          const notFound = new Error('Media not found')
+          notFound.code = 'NOT_FOUND'
+          throw notFound
+        }
 
+        const params = Object.assign({}, req.body)
+
+        if (params.name) {
+          media.setName(params.name, lang)
+          delete params.name
+        }
+
+        if (params.content) {
+          media.setContent(params.content, lang)
+          delete params.content
+        }
+
+        Object.keys(req.body).forEach(key => {
+          if (key === 'id') return
+          media[key] = params[key]
         })
-        .then(result => {
-          return Media
-            .findOne({
-              where: {
-                id: req.params.mediaId
-              }
-            }, {transaction: t})
-        })
-    })
-    .then(media => {
-      res.json(media.toJSON(lang))
-    })
-    .catch(next)
+
+        return media.save().then(() => media)
+      })
+      .then(media => {
+        res.json(media.toJSON(lang))
+      })
+      .catch(next)
   })
 
   // Delete page by id
-  router.delete('/:pageId', (req, res, next) => {
-    const Page = db.models.Page
+  router.delete('/:pageId/medias/:mediaId', (req, res, next) => {
+    const Media = db.models.Media
 
-    Page
+    const lang = req.query.lang || 'en'
+
+    Media
       .findOne({
         where: {
-          id: req.params.pageId
+          id: req.params.mediaId
         }
       })
-      .then(page => {
-        return Page
+      .then(media => {
+        if (!media) {
+          const notFound = new Error('Media not found')
+          notFound.code = 'NOT_FOUND'
+          throw notFound
+        }
+
+        return Media
           .destroy({
             where: {
-              id: req.params.pageId
+              id: req.params.mediaId
             }
           })
-          .then(() => page)
+          .then(() => media)
       })
-      .then(page => {
-        res.json(page.toJSON())
+      .then(media => {
+        res.json(media.toJSON(lang))
       })
       .catch(next)
   })

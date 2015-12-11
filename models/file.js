@@ -12,7 +12,7 @@ module.exports = function (sequelize, DataTypes) {
     tableName: 'file',
     classMethods: {
       associate (models) {
-        File.belongsTo(models.Media, {as: 'Media'})
+        // File.belongsTo(models.Media, {as: 'Media'})
       }
     },
     instanceMethods: {
