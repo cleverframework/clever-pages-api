@@ -34,7 +34,7 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
 
       writableStream.on('finish', () => {
         const uploadedFile = {}
-        uploadedFile.id = id
+        // uploadedFile.id = id
         uploadedFile.caption = {}
         uploadedFile.caption[lang] = filename
         uploadedFile.filename = newFilename
@@ -79,13 +79,13 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
                     case 'button':
                       promise = media.setButtonFile(file)
                       break
-                    case 'gallery':
-                      promise = media.addImageFiles(file)
-                      return {}
-                      break
+                    default:
+                      promise = Promise.resolve()
                   }
 
-                  return promise.then(() => file)
+                  return promise.then(() => {
+                    return file.setMedia(media).then(() => file)
+                  })
                 })
             })
         })
