@@ -75,52 +75,42 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
 
     const lang = req.query.lang || 'en'
 
-    db.transaction(t => {
-      return Page
-        .findOne({
-          where: {
-            id: req.params.pageId
-          }
-        }, {transaction: t})
-        .then(page => {
-          if (!page) {
-            const notFound = new Error('Page not found')
-            notFound.code = 'NOT_FOUND'
-            throw notFound
-          }
-          const params = Object.assign({}, req.body)
-          if (params.name) {
-            page.setName(params.name, lang)
-            params.name = page.name
-          }
-          if (params.description) {
-            page.setDescription(params.description, lang)
-            params.description = page.description
-          }
-          return params
-        })
-        .then(params => {
-          return Page
-            .update(params, {
-              where: {
-                id: req.params.pageId
-              }
-            }, {transaction: t})
+    return Page
+      .findOne({
+        where: {
+          id: req.params.pageId
+        }
+      })
+      .then(page => {
+        if (!page) {
+          const notFound = new Error('Page not found')
+          notFound.code = 'NOT_FOUND'
+          throw notFound
+        }
 
+        const params = Object.assign({}, req.body)
+
+        if (params.name) {
+          page.setName(params.name, lang)
+          delete params.name
+        }
+
+        if (params.description) {
+          page.setDescription(params.description, lang)
+          delete params.description
+        }
+
+        Object.keys(req.body).forEach(key => {
+          if (key === 'id') return
+          page[key] = params[key]
         })
-        .then(result => {
-          return Page
-            .findOne({
-              where: {
-                id: req.params.pageId
-              }
-            }, {transaction: t})
-        })
-    })
-    .then(page => {
-      res.json(page.toJSON(lang))
-    })
-    .catch(next)
+
+        return page.save().then(() => page)
+      })
+      .then(page => {
+        res.json(page.toJSON(lang))
+      })
+      .catch(next)
   })
 
   // Delete page by id
