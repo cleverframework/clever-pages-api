@@ -17,8 +17,10 @@ module.exports = function (sequelize, DataTypes) {
       getCaption (lang) {
         return this.caption[lang]
       },
-      toJSON () {
-        return this.get({ plain: true })
+      toJSON (lang) {
+        const obj = this.get({ plain: true })
+        obj.caption = this.getCaption(lang)
+        return obj
       }
     }
   })

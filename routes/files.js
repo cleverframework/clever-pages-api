@@ -70,7 +70,7 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
               return File
                 .create(uploadedFile, {transaction: t})
                 .then(file => {
-                  const promise = null
+                  let promise = null
 
                   switch (media.type) {
                     case 'image':
@@ -81,6 +81,7 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
                       break
                     case 'gallery':
                       promise = media.addImageFiles(file)
+                      return {}
                       break
                   }
 
