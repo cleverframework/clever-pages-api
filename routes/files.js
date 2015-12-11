@@ -42,58 +42,49 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
         // uploadedFile.encoding = encoding
         uploadedFile.mimetype = mimetype
 
-        // Media.update({
-        //   File: [ uploadedFile ]
-        // }, {
-        //   where: {
-        //     id: req.params.mediaId
-        //   },
-        //   include: [ { model: File, as: 'imageFiles' } ]
-        // })
-        // .then(file => {
-        //   res.json(uploadedFile)
-        // })
-        // .catch(next)
+        Media
+          .findOne({
+            where: { id: req.params.mediaId }
+          })
+          .then(media => {
+            if (!media) {
+              const notFound = new Error('Page not found')
+              notFound.code = 'NOT_FOUND'
+              throw notFound
+            }
 
-        db.transaction(t => {
-          return Media
-            .findOne({
-              where: { id: req.params.mediaId }
-            }, {transaction: t})
-            .then(media => {
-              if (!media) {
-                const notFound = new Error('Page not found')
-                notFound.code = 'NOT_FOUND'
-                throw notFound
-              }
-
+            return db.transaction(t => {
               return File
                 .create(uploadedFile, {transaction: t})
                 .then(file => {
-                  let promise = null
+                  let q = null
+                  const now = (new Date()).toISOString()
 
                   switch (media.type) {
                     case 'image':
-                      promise = media.setImageFile(file)
+                      q = `UPDATE media SET image_file_id = ${file.id}, updated_at = '${now}' WHERE id = ${media.id}`
                       break
                     case 'button':
-                      promise = media.setButtonFile(file)
-                      break
+                      q = `UPDATE media SET button_file_id = ${file.id}, updated_at = '${now}' WHERE id = ${media.id}`
                     default:
-                      promise = Promise.resolve()
+                      q = `UPDATE file SET media_id = ${media.id}, updated_at = '${now}' WHERE id = ${file.id}`
                   }
 
-                  return promise.then(() => {
-                    return file.setMedia(media).then(() => file)
+                  return new Promise((yep, nope) => {
+                    db
+                      .query(q, {transaction: t})
+                      .spread((results, metadata) => {
+                        yep(file)
+                      })
                   })
+
                 })
             })
-        })
-        .then(file => {
-          res.json(file.toJSON(lang))
-        })
-        .catch(next)
-
+          })
+          .then(file => {
+            res.json(file.toJSON(lang))
+          })
+          .catch(next)
       })
 
       onFile = true
