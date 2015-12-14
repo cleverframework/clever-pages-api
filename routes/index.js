@@ -115,7 +115,7 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
           delete params.description
         }
 
-        Object.keys(req.body).forEach(key => {
+        Object.keys(params).forEach(key => {
           if (key === 'id') return
           page[key] = params[key]
         })

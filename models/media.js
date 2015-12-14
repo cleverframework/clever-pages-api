@@ -13,6 +13,9 @@ module.exports = function (sequelize, DataTypes) {
     name: { type: DataTypes.JSON, defaultValue: '{"en":""}' },
     content: { type: DataTypes.JSON, defaultValue: '{"en":""}' },
 
+    // image
+    caption: { type: DataTypes.JSON, defaultValue: '{"en":""}' },
+
     // button
     link: { type: DataTypes.STRING, allowNull: true }
 
@@ -49,6 +52,16 @@ module.exports = function (sequelize, DataTypes) {
         const content = JSON.parse(this.content || '{}')
         return content[lang]
       },
+      setCaption (text, lang) {
+        const caption = JSON.parse(this.caption || '{}')
+        caption[lang] = text
+        this.caption = JSON.stringify(caption)
+      },
+      getCaption (lang) {
+        console.log('Agggg ' + (typeof this.caption))
+        const caption = JSON.parse(this.caption || '{}')
+        return caption[lang]
+      },
       toJSON (lang) {
         const obj = this.get({ plain: true })
 
@@ -56,6 +69,9 @@ module.exports = function (sequelize, DataTypes) {
           case 'text':
             obj.name = this.getName(lang)
             obj.content = this.getContent(lang)
+            break
+          case 'image':
+            obj.caption = this.getCaption(lang)
             if (this.imageFile) obj.imageFile = this.imageFile.toJSON(lang)
             break
           case 'gallery':

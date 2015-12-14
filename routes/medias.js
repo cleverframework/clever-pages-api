@@ -56,6 +56,9 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
           { model: File, as: 'imageFile' },
           { model: File, as: 'imageFiles' },
           { model: File, as: 'buttonFile' }
+        ],
+        order: [
+          [ { model: File, as: 'imageFiles' }, 'order', 'ASC' ]
         ]
       })
       .then(media => {
@@ -77,7 +80,12 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
           delete params.content
         }
 
-        Object.keys(req.body).forEach(key => {
+        if (params.caption) {
+          media.setCaption(params.caption, lang)
+          delete params.caption
+        }
+
+        Object.keys(params).forEach(key => {
           if (key === 'id') return
           media[key] = params[key]
         })

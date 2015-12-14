@@ -4,6 +4,7 @@ module.exports = function (sequelize, DataTypes) {
   const File = sequelize.define('File', {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     caption: { type: DataTypes.JSON, defaultValue: '{"en":""}'},
+    order: { type: DataTypes.INTEGER, allowNull: true },
     mimetype: { type: DataTypes.STRING, defaultValue: 'application/octet-stream'},
     filename: { type: DataTypes.STRING }
   }, {
@@ -16,12 +17,15 @@ module.exports = function (sequelize, DataTypes) {
       }
     },
     instanceMethods: {
-
+      // TODO: Use object instead JSON string
       setCaption (text, lang) {
-        this.caption[lang] = text
+        const caption = typeof this.caption === 'object' ? this.caption : JSON.parse(this.caption || '{}')
+        caption[lang] = text
+        this.caption = JSON.stringify(caption)
       },
       getCaption (lang) {
-        return this.caption[lang]
+        const caption = typeof this.caption === 'object' ? this.caption : JSON.parse(this.caption || '{}')
+        return caption[lang]
       },
       toJSON (lang) {
         const obj = this.get({ plain: true })

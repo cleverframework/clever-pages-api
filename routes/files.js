@@ -12,6 +12,149 @@ const getFileExt = require('../util').getFileExt
 // Exports
 module.exports = function (UsersApiPackage, app, config, db, auth) {
 
+  // Update a file
+  router.put('/:pageId/medias/:mediaId/files/sort', (req, res, next) => {
+    const Media = db.models.Media
+    const File = db.models.File
+
+    const lang = req.query.lang || 'en'
+
+    db.transaction(t => {
+      const sortedIds = req.body.sortedIds
+      return Promise.all(sortedIds.map((id, i) => {
+        if (!id) return Promise.resolve()
+        return File
+          .update({order: i++}, {where: {id}}, {transaction: t})
+      }))
+    })
+    .then(() => {
+      return Media
+        .findOne({
+          where: { id: req.params.mediaId },
+          include: [
+            { model: File, as: 'imageFile' },
+            { model: File, as: 'imageFiles' },
+            { model: File, as: 'buttonFile' }
+          ],
+          order: [
+            [ { model: File, as: 'imageFiles' }, 'order', 'ASC' ]
+          ]
+        })
+    })
+    .then(media => {
+      res.json(media.toJSON(lang))
+    })
+    .catch(next)
+  })
+
+  // Update a file
+  router.put('/:pageId/medias/:mediaId/files/:fileId', (req, res, next) => {
+    const Media = db.models.Media
+    const File = db.models.File
+
+    const lang = req.query.lang || 'en'
+
+    return File
+      .findOne({
+        where: {
+          id: req.params.fileId
+        }
+      })
+      .then(file => {
+        if (!file) {
+          const notFound = new Error('File not found')
+          notFound.code = 'NOT_FOUND'
+          throw notFound
+        }
+
+        const params = Object.assign({}, req.body)
+
+        if (params.caption) {
+          file.setCaption(params.caption, lang)
+          delete params.caption
+        }
+
+        Object.keys(params).forEach(key => {
+          if (key === 'id') return
+          file[key] = params[key]
+        })
+
+        return file.save().then(() => {
+          console.log(file.caption)
+        })
+      })
+      .then(() => {
+
+        return Media
+          .findOne({
+            where: { id: req.params.mediaId },
+            include: [
+              { model: File, as: 'imageFile' },
+              { model: File, as: 'imageFiles' },
+              { model: File, as: 'buttonFile' }
+            ],
+            order: [
+              [ { model: File, as: 'imageFiles' }, 'order', 'ASC' ]
+            ]
+          })
+      })
+      .then(media => {
+        res.json(media.toJSON(lang))
+      })
+      .catch(next)
+  })
+
+  // Delete a file
+  router.delete('/:pageId/medias/:mediaId/files/:fileId', (req, res, next) => {
+    const Media = db.models.Media
+    const File = db.models.File
+
+    const lang = req.query.lang || 'en'
+
+    File
+      .findOne({
+        where: { id: req.params.fileId }
+      })
+      .then(file => {
+        if (!file) {
+          const notFound = new Error('File not found')
+          notFound.code = 'NOT_FOUND'
+          throw notFound
+        }
+
+        // TODO: SET id_button_media/id_image_media to NULL
+        return File
+          .destroy({
+            where: {
+              id: req.params.fileId
+            }
+          })
+      })
+      .then(() => {
+        return Media
+          .findOne({
+            where: { id: req.params.mediaId },
+            include: [
+              { model: File, as: 'imageFile' },
+              { model: File, as: 'imageFiles' },
+              { model: File, as: 'buttonFile' }
+            ],
+            order: [
+              [ { model: File, as: 'imageFiles' }, 'order', 'ASC' ]
+            ]
+          })
+      })
+      .then(media => {
+        if (!media) {
+          const notFound = new Error('Media not found')
+          notFound.code = 'NOT_FOUND'
+          throw notFound
+        }
+        res.json(media.toJSON(lang))
+      })
+      .catch(next)
+  })
+
   // Upload a file
   router.post('/:pageId/medias/:mediaId/files', (req, res, next) => {
     const Media = db.models.Media
@@ -33,10 +176,12 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
       file.pipe(writableStream)
 
       writableStream.on('finish', () => {
+        const caption = {}
+        caption[lang] = filename
+
         const uploadedFile = {}
         // uploadedFile.id = id
-        uploadedFile.caption = {}
-        uploadedFile.caption[lang] = filename
+        uploadedFile.caption = JSON.stringify(caption)
         uploadedFile.filename = newFilename
         // uploadedFile.originalFilename = filename
         // uploadedFile.encoding = encoding
@@ -48,7 +193,7 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
           })
           .then(media => {
             if (!media) {
-              const notFound = new Error('Page not found')
+              const notFound = new Error('Media not found')
               notFound.code = 'NOT_FOUND'
               throw notFound
             }
@@ -90,6 +235,9 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
                   { model: File, as: 'imageFile' },
                   { model: File, as: 'imageFiles' },
                   { model: File, as: 'buttonFile' }
+                ],
+                order: [
+                  [ { model: File, as: 'imageFiles' }, 'order', 'ASC' ]
                 ]
               })
           })
