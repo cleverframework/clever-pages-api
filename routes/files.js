@@ -79,9 +79,7 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
           file[key] = params[key]
         })
 
-        return file.save().then(() => {
-          console.log(file.caption)
-        })
+        return file.save()
       })
       .then(() => {
 
