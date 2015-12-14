@@ -58,7 +58,6 @@ module.exports = function (sequelize, DataTypes) {
         this.caption = JSON.stringify(caption)
       },
       getCaption (lang) {
-        console.log('Agggg ' + (typeof this.caption))
         const caption = JSON.parse(this.caption || '{}')
         return caption[lang]
       },
