@@ -4,8 +4,9 @@ const f = require('float')
 
 module.exports = function (sequelize, DataTypes) { // TODO: inject db
   const Page = sequelize.define('Page', {
-    id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    version: { type: DataTypes.FLOAT, primaryKey: true, defaultValue: 0.1 },
+    sid: { type: DataTypes.STRING, primaryKey: true },
+    id: { type: DataTypes.INTEGER, unique: 'compositeUniqueKey', autoIncrement: true },
+    version: { type: DataTypes.FLOAT, unique: 'compositeUniqueKey', defaultValue: 0.1 },
     published: { type: DataTypes.BOOLEAN, defaultValue: false },
     name: { type: DataTypes.JSON, defaultValue: '{"en":""}'},
     description: { type: DataTypes.JSON, defaultValue: '{"en":""}' }

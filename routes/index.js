@@ -5,6 +5,7 @@ const express = require('express')
 const router = express.Router()
 const jwt = require('jsonwebtoken')
 const request = require('request')
+const shortid = require('shortid')
 
 // Exports
 module.exports = function (UsersApiPackage, app, config, db, auth) {
@@ -44,6 +45,8 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
     const params = Object.assign({}, req.body, {
       name: JSON.stringify(proto)
     })
+
+    params.sid = shortid.generate()
 
     Page
       .create(params)
