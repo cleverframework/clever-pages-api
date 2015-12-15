@@ -1,6 +1,7 @@
 'use strict'
 
 const f = require('float')
+const shortid = require('shortid')
 
 module.exports = function (sequelize, DataTypes) { // TODO: inject db
   const Page = sequelize.define('Page', {
@@ -123,7 +124,7 @@ module.exports = function (sequelize, DataTypes) { // TODO: inject db
         const now = (new Date()).toISOString()
 
         const q1 = `CREATE TEMPORARY TABLE tmp_page AS (SELECT page.* FROM page WHERE id = ${page.id} AND version >= ${page.version})`
-        const q2 = `UPDATE tmp_page SET version=${newVersion}, created_at='${now}', updated_at='${now}' WHERE id = ${page.id}`
+        const q2 = `UPDATE tmp_page SET sid='${shortid.generate()}', version=${newVersion}, created_at='${now}', updated_at='${now}' WHERE id = ${page.id}`
         const q3 = `INSERT INTO page (SELECT tmp_page.* FROM tmp_page WHERE id = ${page.id})`
         const q4 = `DROP TABLE tmp_page`
         const q5 = `SELECT page.* FROM page WHERE id = ${page.id} AND version >= ${newVersion}`
