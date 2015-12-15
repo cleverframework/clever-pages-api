@@ -31,6 +31,96 @@ module.exports = function (sequelize, DataTypes) {
           foreignKey: 'media_id'
         })
         Media.belongsTo(models.File, {as: 'buttonFile', constraints: false})
+      },
+      createAndSetPage (pageId, params, lang) {
+        lang = lang || 'en'
+        
+        const Page = sequelize.models.Page
+
+        return Page.
+          findOne({
+            where: { id: pageId }
+          })
+          .then(page => {
+            if (!page) {
+              const notFound = new Error('Page not found')
+              notFound.code = 'NOT_FOUND'
+              throw notFound
+            }
+            return Media
+              .create(params)
+              .then((media) => {
+                return page
+                  .addMedia(media)
+                  .then(() => media)
+              })
+          })
+      },
+      deleteById (id) {
+        return Media
+          .findOne({
+            where: { id }
+          })
+          .then(media => {
+            if (!media) {
+              const notFound = new Error('Media not found')
+              notFound.code = 'NOT_FOUND'
+              throw notFound
+            }
+
+            return Media
+              .destroy({
+                where: { id }
+              })
+              .then(() => media)
+          })
+      },
+      updateById (id, params, lang) {
+        lang = lang || 'en'
+
+        const File = sequelize.models.File
+
+        return Media
+          .findOne({
+            where: { id },
+            include: [
+              { model: File, as: 'imageFile' },
+              { model: File, as: 'imageFiles' },
+              { model: File, as: 'buttonFile' }
+            ],
+            order: [
+              [ { model: File, as: 'imageFiles' }, 'order', 'ASC' ]
+            ]
+          })
+          .then(media => {
+            if (!media) {
+              const notFound = new Error('Media not found')
+              notFound.code = 'NOT_FOUND'
+              throw notFound
+            }
+
+            if (params.name) {
+              media.setName(params.name, lang)
+              delete params.name
+            }
+
+            if (params.content) {
+              media.setContent(params.content, lang)
+              delete params.content
+            }
+
+            if (params.caption) {
+              media.setCaption(params.caption, lang)
+              delete params.caption
+            }
+
+            Object.keys(params).forEach(key => {
+              if (key === 'id') return
+              media[key] = params[key]
+            })
+
+            return media.save().then(() => media)
+          })
       }
     },
     instanceMethods: {
