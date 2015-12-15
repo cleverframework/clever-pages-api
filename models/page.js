@@ -127,10 +127,8 @@ module.exports = function (sequelize, DataTypes) { // TODO: inject db
         const q4 = `DROP TABLE tmp_page`
         const q5 = `SELECT page.* FROM page WHERE id = ${page.id} AND version >= ${newVersion}`
 
-        const queries = [q1, q2, q3, q4]
-
         return sequelize.transaction(t => {
-          const dbTasks = queries.map(query => {
+          const dbTasks = [q1, q2, q3, q4].map(query => {
             return function () {
               return new Promise((yep, nope) => {
                 sequelize
@@ -162,7 +160,7 @@ module.exports = function (sequelize, DataTypes) { // TODO: inject db
       },
       findAllWithGreaterVersion (lang) {
         lang = lang || 'en'
-        
+
         return new Promise((yep, nope) => {
           const q = 'SELECT p.* \
             FROM page p \
