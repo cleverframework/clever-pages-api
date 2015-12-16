@@ -18,7 +18,7 @@ module.exports = function (sequelize, DataTypes) { // TODO: inject db
     classMethods: {
       associate (models) {
         // Page.models = models
-        Page.hasMany(models.Media, {as: 'medias'})
+        Page.hasMany(models.Media, {as: 'medias', foreignKey: 'page_sid', target: 'sid'})
       },
       deleteByIdAndVersion (id, version) {
         return Page

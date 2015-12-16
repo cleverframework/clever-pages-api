@@ -14,6 +14,64 @@ module.exports = function (sequelize, DataTypes) {
     classMethods: {
       associate (models) {
         // File.belongsTo(models.Media, {as: 'Media'})
+      },
+      deleteById (id) {
+        return File
+          .findOne({
+            where: { id }
+          })
+          .then(file => {
+            if (!file) {
+              const notFound = new Error('File not found')
+              notFound.code = 'NOT_FOUND'
+              throw notFound
+            }
+
+            // TODO: SET id_button_media/id_image_media to NULL
+            return File
+              .destroy({
+                where: { id }
+              })
+              .then(() => file)
+          })
+      },
+      updateById (id, params, lang) {
+        lang = lang || 'en'
+
+        return File
+          .findOne({
+            where: { id }
+          })
+          .then(file => {
+            if (!file) {
+              const notFound = new Error('File not found')
+              notFound.code = 'NOT_FOUND'
+              throw notFound
+            }
+
+            if (params.caption) {
+              file.setCaption(params.caption, lang)
+              delete params.caption
+            }
+
+            Object.keys(params).forEach(key => {
+              if (key === 'id') return
+              file[key] = params[key]
+            })
+
+            return file.save()
+          })
+      },
+      sortByIds (sortedIds, lang) {
+        lang = lang || 'en'
+
+        return sequelize.transaction(t => {
+          return Promise.all(sortedIds.map((id, i) => {
+            if (!id) return Promise.resolve()
+            return File
+              .update({order: i++}, {where: {id}}, {transaction: t})
+          }))
+        })
       }
     },
     instanceMethods: {

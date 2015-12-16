@@ -32,9 +32,77 @@ module.exports = function (sequelize, DataTypes) {
         })
         Media.belongsTo(models.File, {as: 'buttonFile', constraints: false})
       },
+      createAndAddFile (mediaId, uploadedFile) {
+        const File = sequelize.models.File
+
+        return Media
+          .findOne({
+            where: { id: mediaId }
+          })
+          .then(media => {
+            if (!media) {
+              const notFound = new Error('Media not found')
+              notFound.code = 'NOT_FOUND'
+              throw notFound
+            }
+
+            return sequelize.transaction(t => {
+              return File
+                .create(uploadedFile, {transaction: t})
+                .then(file => {
+                  let q = null
+                  const now = (new Date()).toISOString()
+
+                  switch (media.type) {
+                    case 'image':
+                      q = `UPDATE media SET image_file_id = ${file.id}, updated_at = '${now}' WHERE id = ${media.id}`
+                      break
+                    case 'button':
+                      q = `UPDATE media SET button_file_id = ${file.id}, updated_at = '${now}' WHERE id = ${media.id}`
+                      break
+                    default:
+                      q = `UPDATE file SET media_id = ${media.id}, updated_at = '${now}' WHERE id = ${file.id}`
+                  }
+
+                  return new Promise((yep, nope) => {
+                    sequelize
+                      .query(q, {transaction: t})
+                      .spread((results, metadata) => {
+                        // TODO: What if nope?
+                        yep()
+                      })
+                  })
+                })
+            })
+          })
+      },
+      findById (id) {
+        const File = sequelize.models.File
+        
+        return Media
+          .findOne({
+            where: { id },
+            include: [
+              { model: File, as: 'imageFile' },
+              { model: File, as: 'imageFiles' },
+              { model: File, as: 'buttonFile' }
+            ],
+            order: [
+              [ { model: File, as: 'imageFiles' }, 'order', 'ASC' ]
+            ]
+          })
+          .then(media => {
+            if (!media) {
+              const notFound = new Error('Media not found')
+              notFound.code = 'NOT_FOUND'
+              throw notFound
+            }
+            return media
+          })
+      },
       createAndSetPage (pageId, params, lang) {
         lang = lang || 'en'
-        
+
         const Page = sequelize.models.Page
 
         return Page.
