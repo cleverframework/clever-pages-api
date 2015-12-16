@@ -55,7 +55,7 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
   })
 
   // Duplicate new page and bump version
-  router.get('/:pageId/bump-version', (req, res, next) => {
+  router.post('/:pageId/bump-version', (req, res, next) => {
     const Page = db.models.Page
     const Media = db.models.Media
     const File = db.models.File
