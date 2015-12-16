@@ -7,6 +7,7 @@ module.exports = function (sequelize, DataTypes) {
   const Media = sequelize.define('Media', {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     reference: { type: DataTypes.STRING, defaultValue: '' },
+    cloned_from: { type: DataTypes.INTEGER, allowNull: true },
     type: { type: DataTypes.ENUM('text', 'image', 'gallery', 'button') },
 
     // text

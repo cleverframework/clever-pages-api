@@ -3,6 +3,7 @@
 module.exports = function (sequelize, DataTypes) {
   const File = sequelize.define('File', {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
+    cloned_from: { type: DataTypes.INTEGER, allowNull: true },
     caption: { type: DataTypes.JSON, defaultValue: '{"en":""}'},
     order: { type: DataTypes.INTEGER, allowNull: true },
     mimetype: { type: DataTypes.STRING, defaultValue: 'application/octet-stream'},

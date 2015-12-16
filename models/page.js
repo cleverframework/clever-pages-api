@@ -121,31 +121,149 @@ module.exports = function (sequelize, DataTypes) { // TODO: inject db
           })
       },
       duplicateAndBumpVersion (page) {
+        const newPageSid = shortid.generate()
         const newVersion = f.round(page.version + 0.1)
         const now = (new Date()).toISOString()
 
-        const q1 = `CREATE TEMPORARY TABLE tmp_page AS (SELECT page.* FROM page WHERE id = ${page.id} AND version >= ${page.version})`
-        const q2 = `UPDATE tmp_page SET sid='${shortid.generate()}', version=${newVersion}, created_at='${now}', updated_at='${now}' WHERE id = ${page.id}`
-        const q3 = `INSERT INTO page (SELECT tmp_page.* FROM tmp_page WHERE id = ${page.id})`
-        const q4 = `DROP TABLE tmp_page`
-        const q5 = `SELECT page.* FROM page WHERE id = ${page.id} AND version >= ${newVersion}`
+        const pq1 = `CREATE TEMPORARY TABLE tmp_page AS (SELECT page.* FROM page WHERE id = ${page.id} AND version >= ${page.version})`
+        const pq2 = `UPDATE tmp_page SET sid='${newPageSid}', version=${newVersion}, created_at='${now}', updated_at='${now}' WHERE id = ${page.id}`
+        const pq3 = `UPDATE page SET saved=TRUE WHERE sid = '${page.sid}'`
+        const pq4 = `INSERT INTO page (SELECT tmp_page.* FROM tmp_page WHERE id = ${page.id})`
+        const pq5 = `DROP TABLE tmp_page`
+        const pq6 = `SELECT page.* FROM page WHERE id = ${page.id} AND version >= ${newVersion}`
 
         return sequelize.transaction(t => {
-          const dbTasks = [q1, q2, q3, q4].map(query => {
+          const pdbTasks = [pq1, pq2, pq3, pq4, pq5, pq6].map(query => {
             return function () {
               return new Promise((yep, nope) => {
                 sequelize
                   .query(query, {transaction: t})
-                  .spread((results, metadata) => {
-                    yep(results)
-                  })
+                  .spread((results, metadata) => yep(results))
               })
             }
           })
 
-          return dbTasks.reduce((prevTaskPromise, task) => {
-            return prevTaskPromise.then(task())
-          }, Promise.resolve()).then(() => newVersion)
+          return pdbTasks
+            .reduce((prevTaskPromise, task) => {
+              return prevTaskPromise.then(task())
+            }, Promise.resolve())
+            .then(() => {
+              return Promise.all(page.medias.map(media => {
+                const mq1 = `CREATE TEMPORARY TABLE tmp_media AS (SELECT media.* FROM media WHERE id = ${media.id})`
+                const mq2 = `UPDATE tmp_media SET cloned_from=${media.id},created_at='${now}', updated_at='${now}', page_sid='${newPageSid}' WHERE id = ${media.id}`
+                const mq3 = `ALTER TABLE tmp_media DROP id`
+                const mq4 = `INSERT INTO media (reference, cloned_from, type, name, content, caption, link, created_at, updated_at, deleted_at, image_file_id, button_file_id, page_sid) SELECT tmp_media.* FROM tmp_media`
+                const mq5 = `DROP TABLE tmp_media`
+                const mq6 = `SELECT * FROM media WHERE cloned_from = ${media.id}`
+
+                const mdbTasks = [mq1, mq2, mq3, mq4, mq5].map(query => {
+                  return function () {
+                    return new Promise((yep, nope) => {
+                      sequelize
+                        .query(query, {transaction: t})
+                        .spread((results, metadata) => yep(results))
+                    })
+                  }
+                })
+
+                return mdbTasks
+                  .reduce((prevTaskPromise, task) => {
+                    return prevTaskPromise.then(task())
+                  }, Promise.resolve())
+                  .then(() => {
+                    return new Promise((yep, nope) => {
+                      sequelize
+                        .query(mq6, {transaction: t})
+                        .spread((rows, metadata) => yep(rows[0]))
+                    })
+                  })
+                  .then(clonedMedia => {
+                    // TODO: check clonedMedia !== undefined
+
+                    switch (media.type) {
+                      case 'image':
+                      case 'button':
+                        let file = null
+                        if (media.imageFile) file = media.imageFile
+                        if (media.buttonFile) file = media.buttonFile
+
+                        if (file) {
+                          const fq1 = `CREATE TEMPORARY TABLE tmp_file AS (SELECT file.* FROM file WHERE id = ${file.id})`
+                          const fq2 = `UPDATE tmp_file SET cloned_from=${file.id}, created_at='${now}', updated_at='${now}' WHERE id = ${file.id}`
+                          const fq3 = `ALTER TABLE tmp_file DROP id`
+                          const fq4 = `INSERT INTO file (cloned_from, caption, "order", mimetype, filename, created_at, updated_at, deleted_at, media_id) SELECT tmp_file.* FROM tmp_file`
+                          const fq5 = `DROP TABLE tmp_file`
+                          const fq6 = `SELECT * FROM file WHERE cloned_from = ${file.id}`
+
+                          const fdbTasks = [fq1, fq2, fq3, fq4, fq5].map(query => {
+                            return function () {
+                              return new Promise((yep, nope) => {
+                                sequelize
+                                  .query(query, {transaction: t})
+                                  .spread((results, metadata) => yep(results))
+                              })
+                            }
+                          })
+
+                          return fdbTasks
+                            .reduce((prevTaskPromise, task) => {
+                              return prevTaskPromise.then(task())
+                            }, Promise.resolve())
+                            .then(() => {
+                              return new Promise((yep, nope) => {
+                                sequelize
+                                  .query(fq6, {transaction: t})
+                                  .spread((rows, metadata) => yep(rows[0]))
+                              })
+                            })
+                            .then(clonedFile => {
+                              let fq7 = null
+                              if (media.type === 'image') {
+                                fq7 = `UPDATE media SET image_file_id=${clonedFile.id}, updated_at='${now}' WHERE id = ${clonedMedia.id}`
+                              } else {
+                                fq7 = `UPDATE media SET button_file_id=${clonedFile.id}, updated_at='${now}' WHERE id = ${clonedMedia.id}`
+                              }
+
+                              return new Promise((yep, nope) => {
+                                sequelize
+                                  .query(fq7, {transaction: t})
+                                  .spread((results, metadata) => yep(results))
+                              })
+                            })
+                        }
+
+                        return Promise.resolve()
+                      case 'gallery':
+                        return Promise.all(media.imageFiles.map(file => {
+
+                          const fgq1 = `CREATE TEMPORARY TABLE tmp_file AS (SELECT file.* FROM file WHERE id = ${file.id})`
+                          const fgq2 = `UPDATE tmp_file SET cloned_from=${file.id}, created_at='${now}', updated_at='${now}', media_id=${clonedMedia.id} WHERE id = ${file.id}`
+                          const fgq3 = `ALTER TABLE tmp_file DROP id`
+                          const fgq4 = `INSERT INTO file (cloned_from, caption, "order", mimetype, filename, created_at, updated_at, deleted_at, media_id) SELECT tmp_file.* FROM tmp_file`
+                          const fgq5 = `DROP TABLE tmp_file`
+
+                          const fgdbTasks = [fgq1, fgq2, fgq3, fgq4, fgq5].map(query => {
+                            return function () {
+                              return new Promise((yep, nope) => {
+                                sequelize
+                                  .query(query, {transaction: t})
+                                  .spread((results, metadata) => yep(results))
+                              })
+                            }
+                          })
+
+                          return fgdbTasks
+                            .reduce((prevTaskPromise, task) => {
+                              return prevTaskPromise.then(task())
+                            }, Promise.resolve())
+                        }))
+                      default:
+                        return Promise.resolve()
+                    }
+                  })
+              }))
+            })
+            .then(() => newVersion)
         })
       },
       findGreaterVersionById (id) {
