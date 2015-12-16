@@ -78,7 +78,7 @@ module.exports = function (sequelize, DataTypes) {
       },
       findById (id) {
         const File = sequelize.models.File
-        
+
         return Media
           .findOne({
             where: { id },
@@ -105,22 +105,31 @@ module.exports = function (sequelize, DataTypes) {
 
         const Page = sequelize.models.Page
 
-        return Page.
-          findOne({
-            where: { id: pageId }
-          })
-          .then(page => {
-            if (!page) {
-              const notFound = new Error('Page not found')
-              notFound.code = 'NOT_FOUND'
-              throw notFound
-            }
-            return Media
-              .create(params)
-              .then((media) => {
-                return page
-                  .addMedia(media)
-                  .then(() => media)
+        return Page
+          .findGreaterVersionById(pageId)
+          .then(version => {
+            return Page
+              .findOne({
+                where: {
+                  id: pageId,
+                  version: {
+                    $gte: version
+                  }
+                }
+              })
+              .then(page => {
+                if (!page) {
+                  const notFound = new Error('Page not found')
+                  notFound.code = 'NOT_FOUND'
+                  throw notFound
+                }
+                return Media
+                  .create(params)
+                  .then((media) => {
+                    return page
+                      .addMedia(media)
+                      .then(() => media)
+                  })
               })
           })
       },
