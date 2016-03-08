@@ -8,6 +8,7 @@ const router = express.Router()
 const Busboy = require('busboy')
 const shortid = require('shortid')
 const getFileExt = require('../util').getFileExt
+const pkgcloud = require('pkgcloud')
 
 // Exports
 module.exports = function (UsersApiPackage, app, config, db, auth) {
@@ -64,13 +65,8 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
     busboy.on('file', (fieldname, file, filename, encoding, mimetype) => {
       const id = shortid.generate().toLowerCase()
       const newFilename = `${id}${getFileExt(mimetype)}`
-      const saveTo = path.join(__dirname, '../../../../storage/files', newFilename)
 
-      const writableStream = fs.createWriteStream(saveTo)
-
-      file.pipe(writableStream)
-
-      writableStream.on('finish', () => {
+      function onWritableStreamDone () {
         const caption = {}
         caption[lang] = filename
 
@@ -87,7 +83,41 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
           .then(() => Media.findById(req.params.mediaId))
           .then(media => res.json(media.toJSON(lang)))
           .catch(next)
-      })
+      }
+
+      if (config.env === 'development') {
+        // Store on the local file system
+        const saveTo = path.join(__dirname, '../../../../storage/files', newFilename)
+        const writableStream = fs.createWriteStream(saveTo)
+
+        writableStream.on('finish', onWritableStreamDone)
+
+        file.pipe(writableStream)
+      } else {
+        // Store on AWS S3 / Rackspace Cloud Files
+        // console.log(config.storage[process.env.STORAGE_PROVIDER])
+        const storage = pkgcloud.storage.createClient(config.storage[process.env.STORAGE_PROVIDER])
+
+        // console.log(`${config.app.name}-${config.env}`)
+
+        const writableStream = storage.upload({
+          container: `${config.app.name}-${config.env}`,
+          remote: newFilename,
+          headers: {
+            'Access-Control-Allow-Origin': '*'
+          }
+        })
+
+        writableStream.on('error', err => {
+          console.error(err)
+          next(err)
+        })
+
+        writableStream.on('success', onWritableStreamDone)
+
+        file.pipe(writableStream)
+      }
+
 
       onFile = true
     })
@@ -97,7 +127,6 @@ module.exports = function (UsersApiPackage, app, config, db, auth) {
     })
 
     req.pipe(busboy)
-
   })
 
   return router

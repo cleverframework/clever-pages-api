@@ -8,7 +8,9 @@ module.exports = function (sequelize, DataTypes) {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     reference: { type: DataTypes.STRING, defaultValue: '' },
     cloned_from: { type: DataTypes.INTEGER, allowNull: true },
-    type: { type: DataTypes.ENUM('text', 'image', 'gallery', 'button') },
+    type: { type: DataTypes.ENUM('text', 'map', 'image', 'gallery', 'button') },
+    order: { type: DataTypes.INTEGER, allowNull: true },
+    char_limit: { type: DataTypes.INTEGER, defaultValue: 0 },
 
     // text
     name: { type: DataTypes.JSON, defaultValue: '{"en":""}' },
@@ -55,6 +57,7 @@ module.exports = function (sequelize, DataTypes) {
                   const now = (new Date()).toISOString()
 
                   switch (media.type) {
+                    case 'map':
                     case 'image':
                       q = `UPDATE media SET image_file_id = ${file.id}, updated_at = '${now}' WHERE id = ${media.id}`
                       break
@@ -83,6 +86,30 @@ module.exports = function (sequelize, DataTypes) {
         return Media
           .findOne({
             where: { id },
+            include: [
+              { model: File, as: 'imageFile' },
+              { model: File, as: 'imageFiles' },
+              { model: File, as: 'buttonFile' }
+            ],
+            order: [
+              [ { model: File, as: 'imageFiles' }, 'order', 'ASC' ]
+            ]
+          })
+          .then(media => {
+            if (!media) {
+              const notFound = new Error('Media not found')
+              notFound.code = 'NOT_FOUND'
+              throw notFound
+            }
+            return media
+          })
+      },
+      findByPageSid (page_sid) {
+        const File = sequelize.models.File
+
+        return Media
+          .findAll({
+            where: { page_sid },
             include: [
               { model: File, as: 'imageFile' },
               { model: File, as: 'imageFiles' },
@@ -199,6 +226,17 @@ module.exports = function (sequelize, DataTypes) {
 
             return media.save().then(() => media)
           })
+      },
+      sortByIds (sortedIds, lang) {
+        lang = lang || 'en'
+
+        return sequelize.transaction(t => {
+          return Promise.all(sortedIds.map((id, i) => {
+            if (!id) return Promise.resolve()
+            return Media
+              .update({order: i++}, {where: {id}}, {transaction: t})
+          }))
+        })
       }
     },
     instanceMethods: {
@@ -238,6 +276,7 @@ module.exports = function (sequelize, DataTypes) {
             obj.content = this.getContent(lang)
             break
           case 'image':
+            obj.name = this.getName(lang)
             obj.caption = this.getCaption(lang)
             if (this.imageFile) obj.imageFile = this.imageFile.toJSON(lang)
             break
