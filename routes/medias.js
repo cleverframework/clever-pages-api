@@ -8,6 +8,19 @@ const jwt = require('jsonwebtoken')
 // Exports
 module.exports = function (UsersApiPackage, app, config, db, auth) {
 
+  // Sort media
+  router.put('/:pageId/groups/:groupId/medias/sort', (req, res, next) => {
+    const Group = db.models.Group
+    const Media = db.models.Media
+    const lang = req.query.lang || 'en'
+    const sortedIds = req.body.sortedIds
+
+    Media.sortByIds(sortedIds, lang)
+      .then(() => Group.findById(req.params.groupId))
+      .then(group => res.json(group.toJSON(lang)))
+      .catch(next)
+  })
+
   // Create new media
   router.post('/:pageId/medias', (req, res, next) => {
     const Media = db.models.Media

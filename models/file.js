@@ -7,7 +7,8 @@ module.exports = function (sequelize, DataTypes) {
     caption: { type: DataTypes.JSON, defaultValue: '{"en":""}'},
     order: { type: DataTypes.INTEGER, allowNull: true },
     mimetype: { type: DataTypes.STRING, defaultValue: 'application/octet-stream'},
-    filename: { type: DataTypes.STRING }
+    filename: { type: DataTypes.STRING },
+    metadata: { type: DataTypes.JSON, allowNull: true }
   }, {
     paranoid: true,
     underscored: true,
@@ -83,8 +84,15 @@ module.exports = function (sequelize, DataTypes) {
         this.caption = JSON.stringify(caption)
       },
       getCaption (lang) {
-        const caption = typeof this.caption === 'object' ? this.caption : JSON.parse(this.caption || '{}')
-        return caption[lang]
+        let caption
+        try {
+          caption = JSON.parse(this.caption || '{}')
+          caption = (typeof caption === 'object') ? caption[lang] : caption
+        }
+        catch (e) {
+          caption = this.caption
+        }
+        return String(caption)
       },
       toJSON (lang) {
         const obj = this.get({ plain: true })
